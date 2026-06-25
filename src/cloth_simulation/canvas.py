@@ -35,6 +35,13 @@ class ClothCanvas:
         sy = (y + self.cam_y) * self.zoom
         return sx, sy
 
+    def screen_to_world(self, sx, sy):
+        '''Converts screen canvas coordinates back to physical world coordinates.'''
+
+        x = (sx / self.zoom) - self.cam_x
+        y = (sy / self.zoom) - self.cam_y
+        return x, y
+
     def draw_mesh(self, mesh, ground_y):
         '''
         Draws the nodes and springs on the canvas using NumPy arrays and projected coordinates.

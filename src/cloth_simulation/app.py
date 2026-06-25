@@ -4,6 +4,7 @@ shortcuts, and orchestrates the rendering and physics loops.
 '''
 import time
 import tkinter as tk
+import numpy as np
 from cloth_simulation.canvas import ClothCanvas
 from cloth_simulation.ui_panels import ControlPanel
 import cloth_simulation.engine as phys
@@ -42,7 +43,7 @@ class ClothApp:
             parent=self.root,
             on_generate=self.update_simulation,
             on_toggle=self.toggle_physics,
-            on_drop=self.drop_cloth,
+            on_drop=self._drop_cloth,
             defaults=DEFAULTS
         )
 
@@ -68,17 +69,19 @@ class ClothApp:
         self.canvas.bind("<Button-5>", self.cloth_canvas.handle_zoom)
         self.canvas.bind("<Shift-Button-1>", self.cloth_canvas.start_pan)
         self.canvas.bind("<Shift-B1-Motion>", self.cloth_canvas.drag_pan)
+        self.canvas.bind("<Control-Button-1>", self._handle_mouse_cut)
+        self.canvas.bind("<Control-B1-Motion>", self._handle_mouse_cut)
 
         self.root.bind("<r>", lambda event: self._shortcut_trigger(self.update_simulation))
         self.root.bind("<space>", lambda event: self._shortcut_trigger(self.toggle_physics))
-        self.root.bind("<d>", lambda event: self._shortcut_trigger(self.drop_cloth))
+        self.root.bind("<d>", lambda event: self._shortcut_trigger(self._drop_cloth))
 
         self.root.bind_class("Entry", "<r>",
                             lambda event: self._shortcut_trigger(self.update_simulation))
         self.root.bind_class("Entry", "<space>",
                             lambda event: self._shortcut_trigger(self.toggle_physics))
         self.root.bind_class("Entry", "<d>",
-                            lambda event: self._shortcut_trigger(self.drop_cloth))
+                            lambda event: self._shortcut_trigger(self._drop_cloth))
 
     def _shortcut_trigger(self, func):
         '''Safely sets focus to root, executes the function, and blocks default entry behavior.'''
@@ -97,11 +100,44 @@ class ClothApp:
         else:
             self.controls.btn_toggle_phys.config(text="START ENGINE", bg="#2196F3")
 
-    def drop_cloth(self):
+    def _drop_cloth(self):
         '''Unpins all fixed nodes instantly.'''
 
         if self.mesh is not None:
             self.mesh.fixed[:] = False
+
+    def _handle_mouse_cut(self, event):
+        '''Handles cutting springs when clicking/dragging while holding Ctrl.'''
+
+        if self.mesh is None:
+            return
+
+        wx, wy = self.cloth_canvas.screen_to_world(event.x, event.y)
+
+        # Cutting radius
+        cut_radius = 15.0
+
+        # Find starting and ending position of every spring
+        p1 = self.mesh.pos[self.mesh.spring_indices[:, 0]]
+        p2 = self.mesh.pos[self.mesh.spring_indices[:, 1]]
+
+        # Compute middle points
+        midpoints = (p1 + p2) / 2.0
+
+        # Compute distance from mouse position and springs middle points
+        dx = midpoints[:, 0] - wx
+        dy = midpoints[:, 1] - wy
+        distances = np.hypot(dx, dy)
+
+        # Create mask for springs not in the cutting radius
+        mask = distances > cut_radius
+
+        # Apply mask to the mash
+        self.mesh.spring_indices = self.mesh.spring_indices[mask]
+        self.mesh.rest_lengths = self.mesh.rest_lengths[mask]
+
+        if not self.physics_running:
+            self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)
 
     def update_simulation(self):
         '''
