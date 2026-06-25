@@ -82,3 +82,7 @@ $$\vec{x}_{t+\Delta t} = \vec{x}_t + \vec{v}_{t+\Delta t} \cdot \Delta t$$
 PARLARE DELLA SCALETTA DI CALCOLO FORSE, ACCELERAZIONI, VELOCITÀ E POSIZIONI
 PARLARE DELLA GESTIONE TEMPORALE E DEL LIMITE CHE LEGA TEMPO E MASSA DELLE PARTICELLE
 
+## Code breakdown
+
+### Generating the grid
+

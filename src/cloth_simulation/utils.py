@@ -1,12 +1,9 @@
 '''
 Script that defines utility functions for generating a grid of nodes 
-and springs for a cloth simulation. 
-It calculates the appropriate number of nodes based on the specified width, height, 
-and total number of nodes, and creates the necessary connections between nodes to form springs.
+and springs for a cloth simulation using a Data-Oriented approach with NumPy.
 '''
-
 import math
-from proj.classes import Node, Spring
+from cloth_simulation.classes import ClothMesh
 
 
 def generate_cloth_grid(
@@ -15,13 +12,13 @@ def generate_cloth_grid(
         mass,
         total_nodes,
         fixed_count,
-        canvas_real_w, 
+        canvas_real_w,
         canvas_real_h
     ):
     '''
-    Generates a grid of nodes and springs for a cloth simulation.
-    Calculates grid dimensions based on aspect ratio and total nodes.
-    Returns a matrix of initialized nodes and a list of structural springs.
+    Generates a grid layout and populates a ClothMesh instance.
+    Calculates exact grid dimensions and pre-allocates flat NumPy arrays.
+    Returns a populated ClothMesh instance.
     '''
 
     aspect_ratio = width / height
@@ -48,34 +45,40 @@ def generate_cloth_grid(
     offset_x = (canvas_real_w - width) / 2
     offset_y = (canvas_real_h - height) / 2
 
-    # 1. Generate nodes
-    node_mass = mass / (nodes_x * nodes_y)
-    nodes_matrix = []
-    for row in range(nodes_y):
-        node_row = []
-        for col in range(nodes_x):
-            x = offset_x + col * dx
-            y = offset_y + row * dy
-            is_fixed = True if (row == 0 and col in fixed_indices) else False
-            node_row.append(Node(x, y, mass=node_mass, fixed=is_fixed))
-        nodes_matrix.append(node_row)
+    # 1. Compute the numeber of nodes and springs to be initialized
+    num_nodes = nodes_x * nodes_y
+    num_springs = (nodes_x - 1) * nodes_y + nodes_x * (nodes_y - 1)
 
-    # 2. Generate structural springs
-    springs_list = []
+    # 2. Initialize the ClothMesh container
+    mesh = ClothMesh(num_nodes, num_springs)
+    node_mass = mass / num_nodes
+
+    spring_counter = 0
+
+    # 3. Populate the matrix
     for row in range(nodes_y):
         for col in range(nodes_x):
-            current_node = nodes_matrix[row][col]
+            current_idx = row * nodes_x + col
 
+            # Node data
+            mesh.pos[current_idx, 0] = offset_x + col * dx  # X
+            mesh.pos[current_idx, 1] = offset_y + row * dy  # Y
+            mesh.mass[current_idx] = node_mass
+            mesh.fixed[current_idx] = True if (row == 0 and col in fixed_indices) else False
+
+            # Springs data
+            # Connection with the node on the right
             if col < nodes_x - 1:
-                right_node = nodes_matrix[row][col + 1]
-                springs_list.append(
-                    Spring(current_node, right_node, "structural")
-                )
+                right_idx = row * nodes_x + (col + 1)
+                mesh.spring_indices[spring_counter] = [current_idx, right_idx]
+                mesh.rest_lengths[spring_counter] = dx
+                spring_counter += 1
 
+            # Connection with the node below
             if row < nodes_y - 1:
-                bottom_node = nodes_matrix[row + 1][col]
-                springs_list.append(
-                    Spring(current_node, bottom_node, "structural")
-                )
+                bottom_idx = (row + 1) * nodes_x + col
+                mesh.spring_indices[spring_counter] = [current_idx, bottom_idx]
+                mesh.rest_lengths[spring_counter] = dy
+                spring_counter += 1
 
-    return nodes_matrix, springs_list
+    return mesh
