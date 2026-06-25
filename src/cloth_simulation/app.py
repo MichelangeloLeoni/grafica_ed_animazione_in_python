@@ -14,7 +14,11 @@ DEFAULTS = {
     'height': 400,
     'mass': 100.0,
     'total_nodes': 500,
-    'fixed_nodes': 4
+    'fixed_nodes': 4,
+    'drop_height': 100,
+    'gravity': 2000.0,
+    'stiffness': 5000.0,
+    'damping': 0.005
 }
 
 class ClothApp:
@@ -28,6 +32,7 @@ class ClothApp:
 
         self.mesh = None
         self.physics_running = False
+        self.ground_y = 0.0
         self.last_time = time.perf_counter()
         self.accumulator = 0.0
         self.physics_dt = 0.001
@@ -114,6 +119,7 @@ class ClothApp:
             m = float(self.controls.entry_mass.get())
             total = int(self.controls.entry_total_nodes.get())
             fixed = int(self.controls.entry_fixed_nodes.get())
+            drop_height = int(self.controls.entry_drop_height.get())
         except ValueError:
             return
 
@@ -123,7 +129,15 @@ class ClothApp:
         self.mesh = gf.generate_cloth_grid(
             w, h, m, total, fixed, self.canvas.winfo_width(), self.canvas.winfo_height()
         )
-        self.cloth_canvas.draw_mesh(self.mesh)
+
+        # Compute ground position
+        if self.mesh is not None and len(self.mesh.pos) > 0:
+            lowest_node_y = self.mesh.pos[:, 1].max()
+            self.ground_y = lowest_node_y + drop_height
+        else:
+            self.ground_y = h + drop_height
+
+        self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)
 
     def _game_loop(self):
         '''Asynchronous execution loop running at ~60 FPS.'''
@@ -140,12 +154,12 @@ class ClothApp:
                 k = float(self.controls.entry_stiffness.get())
                 d = float(self.controls.entry_damping.get())
             except ValueError:
-                g, k, d = 2000.0, 5000.0, 0.005
+                g, k, d = DEFAULTS['gravity'], DEFAULTS['stiffness'], DEFAULTS['damping']
 
             self.accumulator += frame_time
             while self.accumulator >= self.physics_dt:
-                phys.step_physics(self.mesh, g, k, d, dt=self.physics_dt)
+                phys.step_physics(self.mesh, g, k, d, self.ground_y, dt=self.physics_dt)
                 self.accumulator -= self.physics_dt
 
-        self.cloth_canvas.draw_mesh(self.mesh)
+        self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)
         self.root.after(16, self._game_loop)

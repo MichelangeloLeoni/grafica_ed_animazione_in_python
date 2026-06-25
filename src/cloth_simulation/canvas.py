@@ -35,7 +35,7 @@ class ClothCanvas:
         sy = (y + self.cam_y) * self.zoom
         return sx, sy
 
-    def draw_mesh(self, mesh):
+    def draw_mesh(self, mesh, ground_y):
         '''
         Draws the nodes and springs on the canvas using NumPy arrays and projected coordinates.
         '''
@@ -45,11 +45,19 @@ class ClothCanvas:
         if mesh is None:
             return
 
+        # 1. Draw ground
+        if ground_y is not None:
+            _, sy = self.world_to_screen(0, ground_y)
+            canvas_width = self.canvas.winfo_width()
+            self.canvas.create_line(
+                0, sy, canvas_width, sy, fill="#4CAF50", width=3
+            )
+
         line_width = max(1, int(self.zoom))
         pos = mesh.pos
         spring_indices = mesh.spring_indices
 
-        # 1. Draw spring
+        # 2. Draw spring
         for i in range(len(spring_indices)):
             p1_idx = spring_indices[i, 0]
             p2_idx = spring_indices[i, 1]
@@ -61,7 +69,7 @@ class ClothCanvas:
                 x1, y1, x2, y2, fill="#bbb", width=line_width
             )
 
-        # 2. Draw nodes
+        # 3. Draw nodes
         scaled_radius = max(2, int(NODE_RADIUS * self.zoom))
         fixed = mesh.fixed
 

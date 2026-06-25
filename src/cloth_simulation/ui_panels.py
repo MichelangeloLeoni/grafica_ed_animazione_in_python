@@ -29,6 +29,11 @@ class ControlPanel:
         self.entry_height.insert(0, str(defaults['height']))
         self.entry_height.pack(pady=(0, 10))
 
+        tk.Label(control_frame, text="Drop height (px):").pack(anchor=tk.W)
+        self.entry_drop_height = tk.Entry(control_frame, width=15)
+        self.entry_drop_height.insert(0, str(defaults['drop_height']))
+        self.entry_drop_height.pack(pady=(0, 15))
+
         tk.Label(control_frame, text="Mass:").pack(anchor=tk.W)
         self.entry_mass = tk.Entry(control_frame, width=15)
         self.entry_mass.insert(0, str(defaults['mass']))
@@ -53,19 +58,19 @@ class ControlPanel:
         phys_frame = tk.LabelFrame(self.parent, text=" Physics Parameters ", padx=10, pady=10)
         phys_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=10)
 
-        tk.Label(phys_frame, text="Gravity (px/s²):").pack(anchor=tk.W)
+        tk.Label(phys_frame, text="Gravity:").pack(anchor=tk.W)
         self.entry_gravity = tk.Entry(phys_frame, width=15)
-        self.entry_gravity.insert(0, "2000.0")
+        self.entry_gravity.insert(0, str(defaults['gravity']))
         self.entry_gravity.pack(pady=(0, 10))
 
-        tk.Label(phys_frame, text="Stiffness (k):").pack(anchor=tk.W)
+        tk.Label(phys_frame, text="Stiffness:").pack(anchor=tk.W)
         self.entry_stiffness = tk.Entry(phys_frame, width=15)
-        self.entry_stiffness.insert(0, "5000.0")
+        self.entry_stiffness.insert(0, str(defaults['stiffness']))
         self.entry_stiffness.pack(pady=(0, 10))
 
         tk.Label(phys_frame, text="Damping:").pack(anchor=tk.W)
         self.entry_damping = tk.Entry(phys_frame, width=15)
-        self.entry_damping.insert(0, "0.005")
+        self.entry_damping.insert(0, str(defaults['damping']))
         self.entry_damping.pack(pady=(0, 15))
 
         self.btn_toggle_phys = tk.Button(
