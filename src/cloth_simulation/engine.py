@@ -61,7 +61,7 @@ def _step_physics_jit(
         # Calcolo della distanza (vettore e scalare)
         dx = pos[p2_idx, 0] - pos[p1_idx, 0]
         dy = pos[p2_idx, 1] - pos[p1_idx, 1]
-        
+
         current_dist = (dx**2 + dy**2)**0.5
         if current_dist == 0.0:
             continue

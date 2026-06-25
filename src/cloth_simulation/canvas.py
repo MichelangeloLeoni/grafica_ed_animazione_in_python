@@ -23,18 +23,23 @@ class ClothCanvas:
 
     def reset_camera(self):
         '''Resets the internal camera view to default values.'''
+
         self.zoom = 1.0
         self.cam_x = 0.0
         self.cam_y = 0.0
 
     def world_to_screen(self, x, y):
         '''Projects physical world coordinates onto canvas screen coordinates.'''
+
         sx = (x + self.cam_x) * self.zoom
         sy = (y + self.cam_y) * self.zoom
         return sx, sy
 
     def draw_mesh(self, mesh):
-        '''Draws the nodes and springs on the canvas using NumPy arrays and projected coordinates.'''
+        '''
+        Draws the nodes and springs on the canvas using NumPy arrays and projected coordinates.
+        '''
+
         self.canvas.delete("all")
 
         if mesh is None:
@@ -44,7 +49,7 @@ class ClothCanvas:
         pos = mesh.pos
         spring_indices = mesh.spring_indices
 
-        # 1. Disegno delle Molle Strutturali
+        # 1. Draw spring
         for i in range(len(spring_indices)):
             p1_idx = spring_indices[i, 0]
             p2_idx = spring_indices[i, 1]
@@ -56,7 +61,7 @@ class ClothCanvas:
                 x1, y1, x2, y2, fill="#bbb", width=line_width
             )
 
-        # 2. Disegno dei Nodi
+        # 2. Draw nodes
         scaled_radius = max(2, int(NODE_RADIUS * self.zoom))
         fixed = mesh.fixed
 
@@ -74,6 +79,7 @@ class ClothCanvas:
 
     def handle_zoom(self, event):
         '''Handles zooming in and out of the canvas centered on the mouse position.'''
+
         old_zoom = self.zoom
         if event.num == 4 or event.delta > 0:
             self.zoom *= 1.1
@@ -88,11 +94,13 @@ class ClothCanvas:
 
     def start_pan(self, event):
         '''Initializes the starting point for panning the canvas.'''
+
         self.pan_start_x = event.x
         self.pan_start_y = event.y
 
     def drag_pan(self, event):
         '''Moves the camera view across the world space during dragging.'''
+
         dx = event.x - self.pan_start_x
         dy = event.y - self.pan_start_y
         self.cam_x += dx / self.zoom

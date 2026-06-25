@@ -49,6 +49,7 @@ class ClothApp:
 
     def _build_gui(self):
         '''Builds the GUI layout with control panels and canvas.'''
+
         # Left Panel: Geometry controls
         control_frame = tk.LabelFrame(
             self.root, text=" Cloth Geometry ", padx=10, pady=10
@@ -148,29 +149,30 @@ class ClothApp:
         self.canvas.bind("<Button-5>", self.cloth_canvas.handle_zoom)
         self.canvas.bind("<Shift-Button-1>", self.cloth_canvas.start_pan)
         self.canvas.bind("<Shift-B1-Motion>", self.cloth_canvas.drag_pan)
-   
-        # Classe-level bindings per intercettare i tasti dentro le Entry
+
         self.root.bind_class("Entry", "<r>", self._on_restart_pressed)
         self.root.bind_class("Entry", "<space>", self._on_toggle_pressed)
 
-        # Global bindings quando il focus è altrove
         self.root.bind("<r>", self._on_restart_pressed)
         self.root.bind("<space>", self._on_toggle_pressed)
 
     def _on_restart_pressed(self, event):
         '''Handles the restart button press event. Resets the simulation and camera view.'''
+
         self.root.focus_set()
         self.update_simulation()
         return "break"
 
     def _on_toggle_pressed(self, event):
         '''Handles the toggle button press event. Starts or pauses the physics engine loop.'''
+
         self.root.focus_set()
         self.toggle_physics()
         return "break"
 
     def toggle_physics(self):
         '''Toggles the execution state of the physics engine loop.'''
+
         self.physics_running = not self.physics_running
         if self.physics_running:
             self.btn_toggle_phys.config(text="PAUSE ENGINE", bg="#FF9800")
@@ -183,6 +185,7 @@ class ClothApp:
         Updates the cloth simulation based on user input parameters. Pauses the engine,
         generates the new mesh, and resets the camera view.
         '''
+
         self.physics_running = False
         self.btn_toggle_phys.config(text="START ENGINE", bg="#2196F3")
         self.cloth_canvas.reset_camera()
@@ -199,7 +202,7 @@ class ClothApp:
         self.canvas.config(width=w * 1.25, height=h * 1.25)
         self.root.update()
 
-        # Genera la nuova ClothMesh (struttura dati NumPy)
+        # Generate new cloth mesh
         self.mesh = gf.generate_cloth_grid(
             w, h, m, total, fixed, self.canvas.winfo_width(), self.canvas.winfo_height()
         )
@@ -207,12 +210,12 @@ class ClothApp:
 
     def _game_loop(self):
         '''Asynchronous execution loop running at ~60 FPS.'''
+
         current_time = time.perf_counter()
         frame_time = current_time - self.last_time
         self.last_time = current_time
 
-        if frame_time > 0.1:
-            frame_time = 0.1
+        frame_time = min(frame_time, 0.1)
 
         if self.physics_running:
             try:
@@ -224,7 +227,6 @@ class ClothApp:
 
             self.accumulator += frame_time
 
-            # Mantiene separati i rate: calcola la fisica a frequenza FISSA (physics_dt)
             while self.accumulator >= self.physics_dt:
                 phys.step_physics(
                     self.mesh,
@@ -235,6 +237,5 @@ class ClothApp:
                 )
                 self.accumulator -= self.physics_dt
 
-        # Il rendering grafico avviene una volta sola a frame visivo
         self.cloth_canvas.draw_mesh(self.mesh)
         self.root.after(16, self._game_loop)
