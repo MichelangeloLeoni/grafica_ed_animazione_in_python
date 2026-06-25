@@ -16,7 +16,7 @@ DEFAULTS = {
     'mass': 100.0,
     'total_nodes': 500,
     'fixed_nodes': 4,
-    'drop_height': 100,
+    'drop_height': 150,
     'gravity': 2000.0,
     'stiffness': 5000.0,
     'damping': 0.005
@@ -34,6 +34,8 @@ class ClothApp:
         self.mesh = None
         self.physics_running = False
         self.ground_y = 0.0
+        self.grabbed_node_idx = None
+        self.grabbed_node_was_fixed = False
         self.last_time = time.perf_counter()
         self.accumulator = 0.0
         self.physics_dt = 0.001
@@ -72,6 +74,10 @@ class ClothApp:
         self.canvas.bind("<Control-Button-1>", self._handle_mouse_cut)
         self.canvas.bind("<Control-B1-Motion>", self._handle_mouse_cut)
 
+        self.canvas.bind("<Button-1>", self._handle_mouse_grab)
+        self.canvas.bind("<B1-Motion>", self._handle_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._handle_mouse_release)
+
         self.root.bind("<r>", lambda event: self._shortcut_trigger(self.update_simulation))
         self.root.bind("<space>", lambda event: self._shortcut_trigger(self.toggle_physics))
         self.root.bind("<d>", lambda event: self._shortcut_trigger(self._drop_cloth))
@@ -99,6 +105,52 @@ class ClothApp:
             self.last_time = time.perf_counter()
         else:
             self.controls.btn_toggle_phys.config(text="START ENGINE", bg="#2196F3")
+
+    def _handle_mouse_grab(self, event):
+        '''Finds and anchors the closest node to the mouse cursor.'''
+
+        if self.mesh is None:
+            return
+
+        if (event.state & 0x0001) or (event.state & 0x0004) or getattr(self, 'c_pressed', False):
+            return
+
+        wx, wy = self.cloth_canvas.screen_to_world(event.x, event.y)
+
+        distances = np.hypot(self.mesh.pos[:, 0] - wx, self.mesh.pos[:, 1] - wy)
+        closest_idx = np.argmin(distances)
+
+        grab_radius = 25.0
+        if distances[closest_idx] <= grab_radius:
+            self.grabbed_node_idx = closest_idx
+            self.grabbed_node_was_fixed = self.mesh.fixed[closest_idx]
+
+            self.mesh.fixed[closest_idx] = True
+
+    def _handle_mouse_drag(self, event):
+        '''Updates the grabbed node's position to track the mouse cursor.'''
+
+        if self.mesh is None or self.grabbed_node_idx is None:
+            return
+
+        wx, wy = self.cloth_canvas.screen_to_world(event.x, event.y)
+
+        self.mesh.pos[self.grabbed_node_idx] = [wx, wy]
+
+        self.mesh.vel[self.grabbed_node_idx] = [0.0, 0.0]
+
+        if not self.physics_running:
+            self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)
+
+    def _handle_mouse_release(self, event):
+        '''Releases the grabbed node, restoring its original physics state.'''
+
+        if self.mesh is None or self.grabbed_node_idx is None:
+            return
+
+        self.mesh.fixed[self.grabbed_node_idx] = self.grabbed_node_was_fixed
+
+        self.grabbed_node_idx = None
 
     def _drop_cloth(self):
         '''Unpins all fixed nodes instantly.'''
