@@ -92,7 +92,8 @@ class ControlPanel:
             "• Pan: Shift + Click & Drag\n" \
             "• Reset grid: r\n" \
             "• Start/Pause engine: Space\n" \
-            "• Drop the cloth",
+            "• Drop the cloth: d\n" \
+            "• Cut the cloth: Ctrl + Click & Drag",
             justify=tk.LEFT,
             fg="gray",
         ).pack()
