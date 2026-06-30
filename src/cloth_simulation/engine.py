@@ -63,8 +63,6 @@ def _compute_forces(mesh, params):
         dy = mesh.pos[p2_idx, 1] - mesh.pos[p1_idx, 1]
 
         current_dist = (dx**2 + dy**2)**0.5
-        if current_dist == 0.0:
-            continue
 
         delta = current_dist - mesh.rest_lengths[i]
         force_scalar = params.stiffness * delta

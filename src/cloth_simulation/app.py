@@ -22,7 +22,7 @@ DEFAULTS = {
     'drop_height': 200,
     'gravity': 9.81,       # Espresso in m/s² (valore standard della gravità terrestre)
     'stiffness': 100.0,   # Espresso in N/m (Rigidezza delle molle)
-    'damping': 0.05         # Espresso in kg/s (Coefficiente di attrito viscoso)
+    'damping': 0.025         # Espresso in kg/s (Coefficiente di attrito viscoso)
 }
 
 class ClothApp:
