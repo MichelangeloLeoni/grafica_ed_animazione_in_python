@@ -35,7 +35,7 @@ class ClothApp:
         self.root.title("Cloth Simulation - Physics Engine")
 
         self.mesh = None
-        self.method = "velocity_verlet"  # Allineato al nome interno corretto
+        self.method = "velocity_verlet" 
         self.physics_running = False
         self.ground_y = 0.0
         self.grabbed_node_idx = None
@@ -44,9 +44,17 @@ class ClothApp:
         self.accumulator = 0.0
         self.physics_dt = 0.001
 
-        # 1. Initialize GUI
+        # =========================================================================
+        # NUOVA STRUTTURA LAYOUT ORAZZONTALE/VERTICALE
+        # =========================================================================
+        
+        # Creiamo un macro-contenitore per la parte alta (Controlli + Stoffa)
+        self.top_frame = tk.Frame(self.root)
+        self.top_frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+
+        # 1. Inizializza la GUI DENTRO il top_frame (cambiato parent)
         self.controls = ControlPanel(
-            parent=self.root,
+            parent=self.top_frame,  # <--- Modificato qui
             method=self.method,
             on_generate=self.update_simulation,
             on_toggle=self.toggle_physics,
@@ -54,14 +62,26 @@ class ClothApp:
             defaults=DEFAULTS
         )
 
-        # 2. Initialize canvas (right panel)
+        # 2. Inizializza il canvas della simulazione DENTRO il top_frame (cambiato parent)
         self.canvas = tk.Canvas(
-            self.root,
+            self.top_frame,         # <--- Modificato qui
             width=DEFAULTS['width'] * 1.25, height=DEFAULTS['height'] * 1.25,
             bg="white", highlightthickness=1, highlightbackground="#ccc"
         )
         self.canvas.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=10, pady=10)
-        self.cloth_canvas = ClothCanvas(self.canvas)
+
+        # 3. Inizializza il grafico in BASSO a tutto, ancorato direttamente a root
+        self.plot = tk.Canvas(
+            self.root,              # Resta ancorato a root per stare sotto al top_frame
+            bg="white", highlightthickness=1, highlightbackground="#ccc",
+            height=130              # Altezza fissa per non rubare troppo spazio alla fisica
+        )
+        # expand=False e fill=tk.X bloccano l'altezza ma estendono il grafico su tutta la larghezza
+        self.plot.pack(side=tk.BOTTOM, expand=False, fill=tk.X, padx=10, pady=10)
+
+        # =========================================================================
+
+        self.cloth_canvas = ClothCanvas(self.canvas, self.plot)
 
         self._setup_bindings()
         self.root.update()
@@ -229,38 +249,48 @@ class ClothApp:
         self.last_time = current_time
 
         frame_time = min(frame_time, 0.1)
+        
+        # Variabile locale per tracciare l'energia di questo frame
+        frame_energy = None
 
         if self.physics_running:
             try:
-                # Lettura dei parametri fisici reali inseriti dall'utente nel pannello GUI
-                gravity_si = float(self.controls.entry_gravity.get())      # m/s²
-                stiffness_si = float(self.controls.entry_stiffness.get())  # N/m
-                damping_si = float(self.controls.entry_damping.get())      # kg/s
+                gravity_si = float(self.controls.entry_gravity.get())      
+                stiffness_si = float(self.controls.entry_stiffness.get())  
+                damping_si = float(self.controls.entry_damping.get())      
             except ValueError:
                 gravity_si = DEFAULTS['gravity']
                 stiffness_si = DEFAULTS['stiffness']
                 damping_si = DEFAULTS['damping']
 
-            # --- SISTEMA DI CONVERSIONE REALE -> PIXEL ---
-            # Moltiplichiamo l'accelerazione di gravità (es. 9.81) per ottenere i pixel/s² (es. 981.0)
             gravity_px = gravity_si * PIXELS_TO_METERS
-            
-            # Stiffness e Damping scalano in modo lineare e si azzerano a vicenda nel calcolo di (F/m),
-            # consentendo una mappatura pulita 1:1 con l'integrazione numerica dei nodi.
             stiffness_px = stiffness_si
             damping_px = damping_si
-            # ---------------------------------------------
 
             selected_method = self.controls.get_integration_method()
 
             self.accumulator += frame_time
             while self.accumulator >= self.physics_dt:
-                total_energy = phys.step_physics(
+                # Esegui lo step e raccogli l'energia calcolata dall'engine
+                frame_energy = phys.step_physics(
                     self.mesh, gravity_px, stiffness_px, damping_px, self.ground_y,
                     dt=self.physics_dt,
                     integration_method=selected_method
                 )
                 self.accumulator -= self.physics_dt
 
+        # Se la fisica è attiva, salviamo l'energia dell'ultimo sotto-passo effettuato
+        if frame_energy is not None:
+            self.last_known_energy = frame_energy
+        elif self.mesh is not None and not hasattr(self, 'last_known_energy'):
+            # Fallback iniziale se il motore è in pausa all'avvio
+            self.last_known_energy = 0.0 
+
+        # RENDERIZZA ENTRAMBI I CANVAS
         self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)
+        
+        if hasattr(self, 'last_known_energy'):
+            # Passa l'energia accumulata al grafico per farlo scorrere
+            self.cloth_canvas.draw_graph(self.last_known_energy)
+
         self.root.after(16, self._game_loop)

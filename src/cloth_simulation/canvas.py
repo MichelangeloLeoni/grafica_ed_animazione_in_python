@@ -2,6 +2,7 @@
 Script that defines the ClothCanvas class, which encapsulates the logic for drawing nodes and 
 springs on a Tkinter canvas, as well as handling zooming and panning interactions via a 2D camera.
 '''
+import matplotlib.pyplot as plt
 
 NODE_RADIUS = 5
 
@@ -13,13 +14,17 @@ class ClothCanvas:
     and projecting world coordinates to screen space.
     '''
 
-    def __init__(self, canvas_obj):
+    def __init__(self, canvas_obj, plot_obj):
         self.canvas = canvas_obj
+        self.plot = plot_obj
         self.zoom = 1.0
         self.cam_x = 0.0
         self.cam_y = 0.0
         self.pan_start_x = 0
         self.pan_start_y = 0
+
+        self.energy_history = []
+        self.max_history_points = 400
 
     def reset_camera(self):
         '''Resets the internal camera view to default values.'''
@@ -122,3 +127,68 @@ class ClothCanvas:
         self.cam_y += dy / self.zoom
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+
+    def draw_graph(self, current_energy):
+        '''
+        Disegna un grafico lineare dell'energia in tempo reale sul canvas dedicato,
+        applicando un auto-scaling verticale basato sui valori minimi e massimi.
+        '''
+        # 1. Salva il dato nella cronologia
+        self.energy_history.append(current_energy)
+        if len(self.energy_history) > self.max_history_points:
+            self.energy_history.pop(0)
+
+        # 2. Pulisci il canvas del grafico
+        self.plot.delete("all")
+
+        num_points = len(self.energy_history)
+        if num_points < 2:
+            return
+
+        # Recupera le dimensioni attuali del widget
+        w = self.plot.winfo_width()
+        h = self.plot.winfo_height()
+        
+        # Margini interni per evitare che il grafico tocchi i bordi
+        padding_x = 10
+        padding_y = 25
+        graph_w = w - (padding_x * 2)
+        graph_h = h - (padding_y * 2)
+
+        # 3. Calcola Min e Max per l'auto-scaling verticale
+        min_e = min(self.energy_history)
+        max_e = max(self.energy_history)
+        energy_range = max_e - min_e
+        if energy_range == 0: 
+            energy_range = 1.0  # Previene la divisione per zero se l'energia è costante
+
+        # 4. Genera le coordinate e disegna i segmenti del grafico
+        points = []
+        for i in range(num_points):
+            # Mappatura asse X (tempo/frame)
+            x = padding_x + (i / (self.max_history_points - 1)) * graph_w
+            
+            # Mappatura asse Y (Valore Energia - invertito perché la Y di Tkinter va verso il basso)
+            norm_y = (self.energy_history[i] - min_e) / energy_range
+            y = padding_y + graph_h * (1.0 - norm_y)
+            
+            points.append((x, y))
+
+        # Disegna la linea continua del grafico
+        for i in range(num_points - 1):
+            self.plot.create_line(
+                points[i][0], points[i][1], points[i+1][0], points[i+1][1],
+                fill="#E91E63", width=2
+            )
+
+        # 5. Sovrapponi informazioni testuali di diagnostica
+        # Convertiamo l'energia da Pixel-Joules a Joule reali (dividendo per PIXELS_TO_METERS^2, ipotizzando 100)
+        conversion_factor = 100.0 ** 2
+        current_j = current_energy / conversion_factor
+        max_j = max_e / conversion_factor
+        min_j = min_e / conversion_factor
+
+        self.plot.create_text(
+            padding_x, 12, anchor="w", fill="#333", font=("Courier", 10, "bold"),
+            text=f"ENERGIA TOTALE: {current_j:.4f} J  [Min: {min_j:.3f} J | Max: {max_j:.3f} J]"
+        )
