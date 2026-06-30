@@ -20,7 +20,7 @@ DEFAULTS = {
     'drop_height': 150,
     'gravity': 2000.0,
     'stiffness': 5000.0,
-    'damping': 0.005
+    'damping': 1
 }
 
 class ClothApp:
