@@ -66,6 +66,8 @@ def _step_physics_jit(
         dt
     )
 
+
+@njit
 def _compute_forces(
         num_nodes,
         num_springs,
@@ -80,9 +82,7 @@ def _compute_forces(
         damping,
     ):
 
-    # 1. Reset forces, then apply gravitational force
-    # and damping
-    # force[:, 0] = X (0.0), force[:, 1] = Y (g * m)
+    # 1. Reset forces, then apply gravitational force and damping
     for i in range(num_nodes):
         force[i, 0] = -damping * vel[i, 0]
         force[i, 1] = gravity * mass[i] - damping * vel[i, 1]
@@ -113,9 +113,12 @@ def _compute_forces(
         force[p2_idx, 0] -= fx
         force[p2_idx, 1] -= fy
 
+
 def _euler_method():
     pass
 
+
+@njit
 def _symplectic_euler_method(
         num_nodes,
         num_springs,
@@ -133,37 +136,40 @@ def _symplectic_euler_method(
         dt
     ):
 
+    # 1. Calcola le forze basandoti sulle posizioni attuali
+    _compute_forces(
+        num_nodes,
+        num_springs,
+        pos,
+        vel,
+        force,
+        mass,
+        spring_indices,
+        rest_lengths,
+        gravity,
+        stiffness,
+        damping
+    )
+
+    # 2. Aggiorna velocità e posizioni per ogni nodo
     for i in range(num_nodes):
         if fixed[i]:
             continue
 
-        # Update positions
+        # Simplettico: Aggiorna PRIMA la velocità usando le forze correnti
+        vel[i, 0] += (force[i, 0] / mass[i]) * dt
+        vel[i, 1] += (force[i, 1] / mass[i]) * dt
+
+        # Simplettico: Aggiorna DOPO la posizione usando la NUOVA velocità
         pos[i, 0] += vel[i, 0] * dt
         pos[i, 1] += vel[i, 1] * dt
 
+        # Gestione collisione con il terreno (Anelastic impact)
         if pos[i, 1] >= ground_y:
             pos[i, 1] = ground_y
-            vel[i, 1] = 0 # Anelastic impact
-            vel[i, 0] = 0 # Anelastic impact
+            vel[i, 1] = 0.0
+            vel[i, 0] = 0.0
 
-        # Update forces
-        _compute_forces(
-            num_nodes,
-            num_springs,
-            pos,
-            vel,
-            force,
-            mass,
-            spring_indices,
-            rest_lengths,
-            gravity,
-            stiffness,
-            damping
-        )
-
-        # Update velocity
-        vel[i, 0] += (force[i, 0]/mass[i]) * dt
-        vel[i, 1] += (force[i, 1]/mass[i]) * dt
 
 def _velocity_verlet_method():
     pass
