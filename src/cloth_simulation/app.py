@@ -33,6 +33,7 @@ class ClothApp:
         self.root.title("Cloth Simulation - Physics Engine")
 
         self.mesh = None
+        self.method = "verlet_velocity"
         self.physics_running = False
         self.ground_y = 0.0
         self.grabbed_node_idx = None
