@@ -11,6 +11,7 @@ import cloth_simulation.engine as phys
 import cloth_simulation.utils as gf
 
 DEFAULTS = {
+    'pixels_to_meters': 100, # 100 pixels equals to a meter in the simulation 
     'width': 400,
     'height': 400,
     'mass': 100.0,
