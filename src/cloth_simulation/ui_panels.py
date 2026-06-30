@@ -76,7 +76,8 @@ class ControlPanel:
         # --- COMPLETAMENTO DROPDOWN MENU ---
         self.methods = {
             "Velocity Verlet method": "velocity_verlet",
-            "Symplectic Euler method": "symplectic_euler"
+            "Symplectic Euler method": "symplectic_euler",
+            "Standard Euler method": "euler"
         }
 
         # Cerca la stringa leggibile corrispondente al metodo di default passato come argomento

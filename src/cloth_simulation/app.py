@@ -16,13 +16,13 @@ PIXELS_TO_METERS = 100
 DEFAULTS = {
     'width': 400,
     'height': 400,
-    'mass': 5.0,           # Espresso in kg (un valore di 1.0 kg è molto più realistico)
+    'mass': 50.0,           # Espresso in kg (un valore di 1.0 kg è molto più realistico)
     'total_nodes': 500,
     'fixed_nodes': 4,
     'drop_height': 200,
     'gravity': 9.81,       # Espresso in m/s² (valore standard della gravità terrestre)
-    'stiffness': 100.0,   # Espresso in N/m (Rigidezza delle molle)
-    'damping': 0.025         # Espresso in kg/s (Coefficiente di attrito viscoso)
+    'stiffness': 1000.0,   # Espresso in N/m (Rigidezza delle molle)
+    'damping': 0.25         # Espresso in kg/s (Coefficiente di attrito viscoso)
 }
 
 class ClothApp:
@@ -255,9 +255,9 @@ class ClothApp:
 
             self.accumulator += frame_time
             while self.accumulator >= self.physics_dt:
-                phys.step_physics(
+                total_energy = phys.step_physics(
                     self.mesh, gravity_px, stiffness_px, damping_px, self.ground_y,
-                    dt=self.physics_dt, 
+                    dt=self.physics_dt,
                     integration_method=selected_method
                 )
                 self.accumulator -= self.physics_dt

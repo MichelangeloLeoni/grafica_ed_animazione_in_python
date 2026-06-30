@@ -3,7 +3,6 @@ Script that handles the core numerical integration for the cloth simulation.
 Optimized with NumPy, Numba JIT, and NamedTuples for clean architecture.
 '''
 from collections import namedtuple
-import numpy as np
 from numba import njit
 
 # 1. Definiamo le strutture dati (NamedTuple) fuori dalle funzioni
@@ -29,16 +28,21 @@ def step_physics(mesh, gravity, stiffness, damping, ground_y, dt=0.001, integrat
     # La chiamata ora è pulitissima!
     _step_physics_jit(mesh_data, params, integration_method)
 
+    return _compute_energy(mesh_data, params)
+
 
 @njit
 def _step_physics_jit(mesh, params, integration_method):
     '''
     JIT-compiled core physics loop.
     '''
-    if integration_method == "symplectic_euler":
-        _symplectic_euler_method(mesh, params)
-    elif integration_method == "velocity_verlet":
+    if integration_method == "velocity_verlet":
         _velocity_verlet_method(mesh, params)
+    elif integration_method == "symplectic_euler":
+        _symplectic_euler_method(mesh, params)
+    elif integration_method == "euler":
+        _euler_method(mesh, params)
+
 
 
 @njit
@@ -77,6 +81,28 @@ def _compute_forces(mesh, params):
         mesh.force[p1_idx, 1] += fy
         mesh.force[p2_idx, 0] -= fx
         mesh.force[p2_idx, 1] -= fy
+
+
+@njit
+def _euler_method(mesh, params):
+    num_nodes = len(mesh.mass)
+
+    _compute_forces(mesh, params)
+
+    for i in range(num_nodes):
+        if mesh.fixed[i]:
+            continue
+
+        mesh.pos[i, 0] += mesh.vel[i, 0] * params.dt
+        mesh.pos[i, 1] += mesh.vel[i, 1] * params.dt
+
+        mesh.vel[i, 0] += (mesh.force[i, 0] / mesh.mass[i]) * params.dt
+        mesh.vel[i, 1] += (mesh.force[i, 1] / mesh.mass[i]) * params.dt
+
+        if mesh.pos[i, 1] >= params.ground_y:
+            mesh.pos[i, 1] = params.ground_y
+            mesh.vel[i, 1] = 0.0
+            mesh.vel[i, 0] = 0.0
 
 
 @njit
@@ -136,3 +162,47 @@ def _velocity_verlet_method(mesh, params):
         if mesh.pos[i, 1] >= params.ground_y:
             mesh.vel[i, 1] = 0.0
             mesh.vel[i, 0] = 0.0
+
+@njit
+def _compute_energy(mesh, params):
+    '''
+    Calcola l'energia meccanica totale del sistema (Cinetica + Potenziale).
+    L'unita di misura risultante e coerente con lo spazio dei pixel (kg * px^2 / s^2).
+    '''
+    num_nodes = len(mesh.mass)
+    num_springs = len(mesh.rest_lengths)
+
+    # 1. ENERGIA CINETICA (E_c = 0.5 * m * v^2)
+    kinetic_energy = 0.0
+    for i in range(num_nodes):
+        # Velocità al quadrato: v_x^2 + v_y^2
+        v_sq = mesh.vel[i, 0]**2 + mesh.vel[i, 1]**2
+        kinetic_energy += 0.5 * mesh.mass[i] * v_sq
+
+    # 2. ENERGIA POTENZIALE GRAVITAZIONALE (U_g = m * g * h)
+    grav_energy = 0.0
+    for i in range(num_nodes):
+        # Poiché la Y cresce verso il basso, l'altezza rispetto al suolo invertita:
+        height = params.ground_y - mesh.pos[i, 1]
+
+        # Usiamo params.gravity (che è già in pixel/s^2)
+        grav_energy += mesh.mass[i] * params.gravity * height
+
+    # 3. ENERGIA POTENZIALE ELASTICA (U_e = 0.5 * k * delta^2)
+    elastic_energy = 0.0
+    for i in range(num_springs):
+        p1_idx = mesh.spring_indices[i, 0]
+        p2_idx = mesh.spring_indices[i, 1]
+
+        # Distanza attuale tra i nodi della molla
+        dx = mesh.pos[p2_idx, 0] - mesh.pos[p1_idx, 0]
+        dy = mesh.pos[p2_idx, 1] - mesh.pos[p1_idx, 1]
+        current_dist = (dx**2 + dy**2)**0.5
+
+        # Deformazione (delta) rispetto alla lunghezza di riposo
+        delta = current_dist - mesh.rest_lengths[i]
+
+        # Energia della molla lineare (Legge di Hooke)
+        elastic_energy += 0.5 * params.stiffness * (delta**2)
+
+    return kinetic_energy + grav_energy + elastic_energy
