@@ -16,8 +16,12 @@ $$m\frac{d^2\vec{x}}{dt^2} = \vec{F}_{tot}$$
 
 we get:
 
-$$\frac{d \vec{v}}{dt} = \frac{\vec{F}_{tot}}{m}$$
-$$\frac{d \vec{x}}{dt} = \vec{v}$$
+$$
+\begin{cases}
+\frac{d \vec{v}}{dt} = \frac{\vec{F}_{tot}}{m} \\
+\frac{d \vec{x}}{dt} = \vec{v}
+\end{cases}
+$$
 
 This is the system of differential equations that we need to solve.
 
@@ -35,13 +39,6 @@ $$\vec{F}_{gravity} = m \cdot \vec{g}$$
 
 where $m$ is the mass of the particle and $\vec{g}$ is the acceleration due to gravity.
 
-In pseudocode, we can write:
-
-```
-def compute_gravity_force(mass, gravity):
-    return mass * gravity
-```
-
 ### Spring force
 
 The spring force acting on a particle is given by Hooke's law:
@@ -49,13 +46,6 @@ The spring force acting on a particle is given by Hooke's law:
 $$\vec{F}_{spring} = -k \cdot (\vec{x} - \vec{x}_{rest})$$
 
 where $k$ is the spring constant, $\vec{x}$ is the current position of the particle, and $\vec{x}_{rest}$ is the rest position of the spring.
-
-In pseudocode, we can write:
-
-```
-def compute_spring_force(spring_constant, current_position, rest_position):
-    return -spring_constant * (current_position - rest_position)
-```
 
 ### Damping force
 
@@ -65,19 +55,47 @@ $$\vec{F}_{damping} = -\gamma \cdot \vec{v}$$
 
 where $\gamma$ is the damping coefficient and $\vec{v}$ is the velocity of the particle.
 
-In pseudocode, we can write:
-
-```
-def compute_damping_force(damping_coefficient, velocity):
-    return -damping_coefficient * velocity
-```
-
 ## Solving the system of differential equations numerically
 
-Using semi-implicit Euler method, we can update the velocity and position of each particle at each time step.
+We can solve the system of ODEs using different integration methods:
 
-$$\vec{v}_{t+\Delta t} = \vec{v}_t + \frac{\vec{F}_{tot}}{m} \cdot \Delta t$$
-$$\vec{x}_{t+\Delta t} = \vec{x}_t + \vec{v}_{t+\Delta t} \cdot \Delta t$$
+- Symplectic Euler method:
+    
+    $$
+    \vec v_{i+1} = \vec v_i + \vec a_i \cdot \Delta t\\
+    \vec r_{i+1} = \vec r_i + \vec v_{i+1} \cdot \Delta t
+    $$
+
+    1. Compute forces
+    2. Update velocity  
+    3. Update position
+
+    ```code
+    def _symplectic_euler_method(mesh, params):
+        num_nodes = len(mesh.mass)
+
+        _compute_forces(mesh, params)
+
+        for i in range(num_nodes):
+            if mesh.fixed[i]:
+                continue
+
+            mesh.vel[i, 0] += (mesh.force[i, 0] / mesh.mass[i]) * params.dt
+            mesh.vel[i, 1] += (mesh.force[i, 1] / mesh.mass[i]) * params.dt
+
+            mesh.pos[i, 0] += mesh.vel[i, 0] * params.dt
+            mesh.pos[i, 1] += mesh.vel[i, 1] * params.dt
+
+            if mesh.pos[i, 1] >= params.ground_y:
+                mesh.pos[i, 1] = params.ground_y
+                mesh.vel[i, 1] = 0.0
+                mesh.vel[i, 0] = 0.0
+    ```
+- Velocity Verlet:
+    djfskd
+    ```code
+    test
+    ```
 
 PARLARE DELLA SCALETTA DI CALCOLO FORSE, ACCELERAZIONI, VELOCITÀ E POSIZIONI
 PARLARE DELLA GESTIONE TEMPORALE E DEL LIMITE CHE LEGA TEMPO E MASSA DELLE PARTICELLE
