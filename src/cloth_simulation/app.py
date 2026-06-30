@@ -10,17 +10,19 @@ from cloth_simulation.ui_panels import ControlPanel
 import cloth_simulation.engine as phys
 import cloth_simulation.utils as gf
 
+# COSTANTE DI CONVERSIONE: 100 pixel corrispondono a 1 metro reale
+PIXELS_TO_METERS = 100 
+
 DEFAULTS = {
-    'pixels_to_meters': 100, # 100 pixels equals to a meter in the simulation 
     'width': 400,
     'height': 400,
-    'mass': 100.0,
+    'mass': 5.0,           # Espresso in kg (un valore di 1.0 kg è molto più realistico)
     'total_nodes': 500,
     'fixed_nodes': 4,
-    'drop_height': 150,
-    'gravity': 2000.0,
-    'stiffness': 5000.0,
-    'damping': 1
+    'drop_height': 200,
+    'gravity': 9.81,       # Espresso in m/s² (valore standard della gravità terrestre)
+    'stiffness': 100.0,   # Espresso in N/m (Rigidezza delle molle)
+    'damping': 0.05         # Espresso in kg/s (Coefficiente di attrito viscoso)
 }
 
 class ClothApp:
@@ -33,7 +35,7 @@ class ClothApp:
         self.root.title("Cloth Simulation - Physics Engine")
 
         self.mesh = None
-        self.method = "verlet_velocity"
+        self.method = "velocity_verlet"  # Allineato al nome interno corretto
         self.physics_running = False
         self.ground_y = 0.0
         self.grabbed_node_idx = None
@@ -139,7 +141,6 @@ class ClothApp:
         wx, wy = self.cloth_canvas.screen_to_world(event.x, event.y)
 
         self.mesh.pos[self.grabbed_node_idx] = [wx, wy]
-
         self.mesh.vel[self.grabbed_node_idx] = [0.0, 0.0]
 
         if not self.physics_running:
@@ -152,7 +153,6 @@ class ClothApp:
             return
 
         self.mesh.fixed[self.grabbed_node_idx] = self.grabbed_node_was_fixed
-
         self.grabbed_node_idx = None
 
     def _drop_cloth(self):
@@ -168,26 +168,17 @@ class ClothApp:
             return
 
         wx, wy = self.cloth_canvas.screen_to_world(event.x, event.y)
-
-        # Cutting radius
         cut_radius = 15.0
 
-        # Find starting and ending position of every spring
         p1 = self.mesh.pos[self.mesh.spring_indices[:, 0]]
         p2 = self.mesh.pos[self.mesh.spring_indices[:, 1]]
-
-        # Compute middle points
         midpoints = (p1 + p2) / 2.0
 
-        # Compute distance from mouse position and springs middle points
         dx = midpoints[:, 0] - wx
         dy = midpoints[:, 1] - wy
         distances = np.hypot(dx, dy)
 
-        # Create mask for springs not in the cutting radius
         mask = distances > cut_radius
-
-        # Apply mask to the mash
         self.mesh.spring_indices = self.mesh.spring_indices[mask]
         self.mesh.rest_lengths = self.mesh.rest_lengths[mask]
 
@@ -241,22 +232,31 @@ class ClothApp:
 
         if self.physics_running:
             try:
-                g = float(self.controls.entry_gravity.get())
-                k = float(self.controls.entry_stiffness.get())
-                d = float(self.controls.entry_damping.get())
+                # Lettura dei parametri fisici reali inseriti dall'utente nel pannello GUI
+                gravity_si = float(self.controls.entry_gravity.get())      # m/s²
+                stiffness_si = float(self.controls.entry_stiffness.get())  # N/m
+                damping_si = float(self.controls.entry_damping.get())      # kg/s
             except ValueError:
-                g, k, d = DEFAULTS['gravity'], DEFAULTS['stiffness'], DEFAULTS['damping']
+                gravity_si = DEFAULTS['gravity']
+                stiffness_si = DEFAULTS['stiffness']
+                damping_si = DEFAULTS['damping']
 
-            # --- RECUPERA IL METODO SELEZIONATO DAL DROPDOWN ---
-            # Lo leggiamo una sola volta per frame per evitare letture ridondanti nel ciclo while
+            # --- SISTEMA DI CONVERSIONE REALE -> PIXEL ---
+            # Moltiplichiamo l'accelerazione di gravità (es. 9.81) per ottenere i pixel/s² (es. 981.0)
+            gravity_px = gravity_si * PIXELS_TO_METERS
+            
+            # Stiffness e Damping scalano in modo lineare e si azzerano a vicenda nel calcolo di (F/m),
+            # consentendo una mappatura pulita 1:1 con l'integrazione numerica dei nodi.
+            stiffness_px = stiffness_si
+            damping_px = damping_si
+            # ---------------------------------------------
+
             selected_method = self.controls.get_integration_method()
-            # ---------------------------------------------------
 
             self.accumulator += frame_time
             while self.accumulator >= self.physics_dt:
-                # Passiamo il metodo dinamico all'engine di fisica
                 phys.step_physics(
-                    self.mesh, g, k, d, self.ground_y, 
+                    self.mesh, gravity_px, stiffness_px, damping_px, self.ground_y,
                     dt=self.physics_dt, 
                     integration_method=selected_method
                 )
