@@ -104,3 +104,11 @@ PARLARE DELLA GESTIONE TEMPORALE E DEL LIMITE CHE LEGA TEMPO E MASSA DELLE PARTI
 
 ### Generating the grid
 
+# TODO:
+
+- [ ] Add odeint method
+- [ ] Add Yoshida method
+- [ ] Clean up total energy visualization
+- [ ] Clean and lint all the code
+- [ ] Comment all the code
+- [ ] Study theory
