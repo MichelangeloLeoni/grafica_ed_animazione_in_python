@@ -49,58 +49,22 @@ def _step_physics_jit(
     num_nodes = len(mass)
     num_springs = len(rest_lengths)
 
-    # 1. Reset forces and apply gravitational force
-    # force[:, 0] = X (0.0), force[:, 1] = Y (g * m)
-    for i in range(num_nodes):
-        force[i, 0] = 0.0
-        force[i, 1] = gravity * mass[i]
-
-    # 2. Compute elastic forces
-    for i in range(num_springs):
-        p1_idx = spring_indices[i, 0]
-        p2_idx = spring_indices[i, 1]
-
-        dx = pos[p2_idx, 0] - pos[p1_idx, 0]
-        dy = pos[p2_idx, 1] - pos[p1_idx, 1]
-
-        current_dist = (dx**2 + dy**2)**0.5
-        if current_dist == 0.0:
-            continue
-
-        delta = current_dist - rest_lengths[i]
-        force_scalar = stiffness * delta
-
-        dir_x = dx / current_dist
-        dir_y = dy / current_dist
-
-        fx = force_scalar * dir_x
-        fy = force_scalar * dir_y
-
-        force[p1_idx, 0] += fx
-        force[p1_idx, 1] += fy
-        force[p2_idx, 0] -= fx
-        force[p2_idx, 1] -= fy
-
-    # 3. Semi-implicit Euler method
-    for i in range(num_nodes):
-        if fixed[i]:
-            continue
-
-        ax = force[i, 0] / mass[i]
-        ay = force[i, 1] / mass[i]
-
-        vel[i, 0] += ax * dt
-        vel[i, 1] += ay * dt
-        vel[i, 0] *= (1.0 - damping)
-        vel[i, 1] *= (1.0 - damping)
-
-        pos[i, 0] += vel[i, 0] * dt
-        pos[i, 1] += vel[i, 1] * dt
-
-        if pos[i, 1] >= ground_y:
-            pos[i, 1] = ground_y
-            vel[i, 1] = 0 # Anelastic impact
-            vel[i, 0] = 0 # Anelastic impact
+    _symplectic_euler_method(
+        num_nodes,
+        num_springs,
+        pos,
+        vel,
+        force,
+        mass,
+        fixed,
+        ground_y,
+        spring_indices,
+        rest_lengths,
+        gravity,
+        stiffness,
+        damping,
+        dt
+    )
 
 def _compute_forces(
         num_nodes,
