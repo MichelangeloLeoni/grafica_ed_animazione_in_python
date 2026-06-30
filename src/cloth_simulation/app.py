@@ -44,6 +44,7 @@ class ClothApp:
         # 1. Initialize GUI
         self.controls = ControlPanel(
             parent=self.root,
+            method=self.method,
             on_generate=self.update_simulation,
             on_toggle=self.toggle_physics,
             on_drop=self._drop_cloth,
@@ -245,9 +246,19 @@ class ClothApp:
             except ValueError:
                 g, k, d = DEFAULTS['gravity'], DEFAULTS['stiffness'], DEFAULTS['damping']
 
+            # --- RECUPERA IL METODO SELEZIONATO DAL DROPDOWN ---
+            # Lo leggiamo una sola volta per frame per evitare letture ridondanti nel ciclo while
+            selected_method = self.controls.get_integration_method()
+            # ---------------------------------------------------
+
             self.accumulator += frame_time
             while self.accumulator >= self.physics_dt:
-                phys.step_physics(self.mesh, g, k, d, self.ground_y, dt=self.physics_dt)
+                # Passiamo il metodo dinamico all'engine di fisica
+                phys.step_physics(
+                    self.mesh, g, k, d, self.ground_y, 
+                    dt=self.physics_dt, 
+                    integration_method=selected_method
+                )
                 self.accumulator -= self.physics_dt
 
         self.cloth_canvas.draw_mesh(self.mesh, self.ground_y)

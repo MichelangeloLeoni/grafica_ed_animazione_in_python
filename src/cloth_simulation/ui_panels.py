@@ -12,7 +12,7 @@ class ControlPanel:
     Expects callbacks for the buttons to keep UI separated from application logic.
     '''
 
-    def __init__(self, parent, on_generate, on_toggle, on_drop, defaults):
+    def __init__(self, parent, method, on_generate, on_toggle, on_drop, defaults):
         self.parent = parent
 
         # Left panel (cloth geometry)
@@ -73,6 +73,30 @@ class ControlPanel:
         self.entry_damping.insert(0, str(defaults['damping']))
         self.entry_damping.pack(pady=(0, 15))
 
+        # --- COMPLETAMENTO DROPDOWN MENU ---
+        self.methods = {
+            "Velocity Verlet method": "velocity_verlet",
+            "Symplectic Euler method": "symplectic_euler"
+        }
+
+        # Cerca la stringa leggibile corrispondente al metodo di default passato come argomento
+        initial_display = "Velocity Verlet method"
+        for display_name, internal_name in self.methods.items():
+            if internal_name == method:
+                initial_display = display_name
+                break
+
+        tk.Label(phys_frame, text="Integration Method:").pack(anchor=tk.W)
+        
+        # Variabile Tkinter per tracciare il valore selezionato nel menu
+        self.selected_method_var = tk.StringVar(value=initial_display)
+        
+        # Generazione dell'OptionMenu usando le chiavi del dizionario
+        self.menu_method = tk.OptionMenu(phys_frame, self.selected_method_var, *self.methods.keys())
+        self.menu_method.config(bg="#EEEEEE", activebackground="#DDDDDD")
+        self.menu_method.pack(fill=tk.X, pady=(0, 15))
+        # ------------------------------------
+
         self.btn_toggle_phys = tk.Button(
             phys_frame, text="START ENGINE", command=on_toggle,
             bg="#2196F3", fg="white", font=("Arial", 10, "bold")
@@ -97,3 +121,11 @@ class ControlPanel:
             justify=tk.LEFT,
             fg="gray",
         ).pack()
+
+    def get_integration_method(self):
+        '''
+        Restituisce la stringa interna del metodo selezionato (es. 'velocity_verlet' o 'symplectic_euler')
+        da passare alla funzione step_physics dell'engine.
+        '''
+        display_name = self.selected_method_var.get()
+        return self.methods.get(display_name, "velocity_verlet")
