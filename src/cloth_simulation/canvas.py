@@ -2,7 +2,6 @@
 Script that defines the ClothCanvas class, which encapsulates the logic for drawing nodes and 
 springs on a Tkinter canvas, as well as handling zooming and panning interactions via a 2D camera.
 '''
-import matplotlib.pyplot as plt
 
 NODE_RADIUS = 5
 
